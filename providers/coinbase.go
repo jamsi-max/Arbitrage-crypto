@@ -61,27 +61,6 @@ func (c *CoinbaseProvider) handleSnapshot(symbol string, asks []SnapshotEntry, b
 	return nil
 }
 
-// func (c *CoinbaseProvider) feedLoop() {
-// 	time.Sleep(time.Second * 2)
-// 	ticker := time.NewTicker(100 * time.Millisecond)
-
-// 	for {
-// 		for _, book := range c.Orderbooks {
-// 			spread := book.Spread()
-// 			bestAsk := book.BestAsk()
-// 			bestBid := book.BestBid()
-// 			c.feedch <- orderbook.DataFeed{
-// 				Provider: "Coinbase",
-// 				Symbol: book.Symbol,
-// 				BestAsk: bestAsk.Price,
-// 				BestBid: bestBid.Price,
-// 				Spread: spread,
-// 			}
-// 		}
-// 		<-ticker.C
-// 	}
-// }
-
 func (c *CoinbaseProvider) Start() error {
 	ws, _, err := websocket.DefaultDialer.Dial("wss://ws-feed.exchange.coinbase.com", nil)
 	if err != nil {
@@ -91,7 +70,7 @@ func (c *CoinbaseProvider) Start() error {
 	ws.WriteJSON(CoinbaseMessage{
 		Type: "subscribe",
 		ProductIds: c.symbols,
-		Channels: []string{"level2_batch"}, // level2 требует aith через сайт и kyc для получения ключа
+		Channels: []string{"level2_batch"}, // level2 требует auth через сайт и KYC для получения ключа
 	})
 
 	go func() {
@@ -106,7 +85,6 @@ func (c *CoinbaseProvider) Start() error {
 				fmt.Println(err)
 				break
 			}
-			// fmt.Println("--->>>", msg)
 			if msg.Type == "l2update" {
 				c.handleUpdate(msg.ProductID, msg.Changes)
 			}

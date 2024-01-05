@@ -1,21 +1,28 @@
 package main
 
 import (
-	"fmt"
 	"log"
 	"time"
 
 	"github.com/jamsi-max/arbitrage/orderbook"
 	"github.com/jamsi-max/arbitrage/providers"
+	"github.com/jamsi-max/arbitrage/socket"
+	// "github.com/jamsi-max/arbitrage//util"
 )
 
 var symbols = []string{
 	"BTCUSD",
 	"ETHUSD",
 	"DOGEUSD",
+	"ADAUSD",
 }
 
 var pairs = map[string]map[string]string{
+	"ADAUSD": {
+		"Binance":  "ADAUSDT",
+		"Kraken":   "ADA/USD",
+		"Coinbase": "ADA-USD", 
+	},
 	"DOGEUSD": {
 		"Binance":  "DOGEUSDT",
 		"Kraken":   "XDG/USD",
@@ -33,8 +40,12 @@ var pairs = map[string]map[string]string{
 	},
 }
 
+func getSymbolForProvider(p string, symbol string) string {
+	return pairs[symbol][p]
+}
+
 func mapSymbolsFor(provider string) []string {
-	out := make([]string,len(symbols))
+	out := make([]string, len(symbols))
 	for i, symbol := range symbols {
 		out[i] = pairs[symbol][provider]
 	}
@@ -55,43 +66,103 @@ func main() {
 		}
 	}
 
-	ticker := time.NewTicker(time.Millisecond * 100)
+	bestSpreadch := make(chan map[string][]orderbook.BestSpread, 1024)
 	go func() {
+		ticker := time.NewTicker(time.Millisecond * 100)
 		for {
-			for _, p := range pvrs {
-				for _, book := range p.GetOrderbooks() {
-					var (
-						spread = book.Spread()
-						bestAsk = book.BestAsk()
-						bestBid = book.BestBid()
-					)
-					if bestAsk == nil || bestBid == nil {
-						continue
-					}
-					datach <- orderbook.DataFeed{
-						Provider: p.Name(),
-						Symbol: book.Symbol,
-						BestAsk: bestAsk.Price,
-						BestBid: bestBid.Price,
-						Spread: spread,
-					}
-				}
-			}
+			calcBestSpreads(bestSpreadch, pvrs)
 			<-ticker.C
 		}
   }()
+
+	socketServer := socket.NewServer(bestSpreadch)
+	socketServer.Start()
+	// go func() {
+	// 	ticker := time.NewTicker(time.Millisecond * 100)
+	// 	for {
+	// 		for _, p := range pvrs {
+	// 			for _, book := range p.GetOrderbooks() {
+	// 				var (
+	// 					spread = book.Spread()
+	// 					bestAsk = book.BestAsk()
+	// 					bestBid = book.BestBid()
+	// 				)
+	// 				if bestAsk == nil || bestBid == nil {
+	// 					continue
+	// 				}
+	// 				datach <- orderbook.DataFeed{
+	// 					Provider: p.Name(),
+	// 					Symbol: book.Symbol,
+	// 					BestAsk: bestAsk.Price,
+	// 					BestBid: bestBid.Price,
+	// 					Spread: spread,
+	// 				}
+	// 			}
+	// 		}
+	// 		<-ticker.C
+	// 	}
+  // }()
 
 	
 
 	// for data := range datach {
 	// 	fmt.Println(data)
 	// }
-	for data := range datach {
-			fmt.Printf("[%s | %s] ASK %f %f BID [%f]\n", data.Provider, data.Symbol, data.BestAsk, data.BestBid, data.Spread)
-	}
 
-	select {}
+	// for data := range datach {
+	// 		fmt.Printf("[%s | %s] ASK %f %f BID [%f]\n", data.Provider, data.Symbol, data.BestAsk, data.BestBid, data.Spread)
+	// }
+
+	// select {}
 }
+
+func calcBestSpreads(datach chan map[string][]orderbook.BestSpread, pvrs []orderbook.Provider) {
+	data := map[string][]orderbook.BestSpread{}
+
+	for _, symbol := range symbols{
+		bestSpreads := []orderbook.BestSpread{}
+		for i := 0; i < len(pvrs); i++ {
+			a := pvrs[i]
+			var b orderbook.Provider
+			if len(pvrs)-1 == i {
+				b = pvrs[0]
+			} else {
+				b = pvrs[i+1]
+			}
+			bookA := a.GetOrderbooks()[getSymbolForProvider(a.Name(), symbol)]
+			bookB := b.GetOrderbooks()[getSymbolForProvider(b.Name(), symbol)]
+
+			best := orderbook.BestSpread{
+				Symbol: symbol,
+			}
+
+			bestBidA := bookA.BestBid()
+			bestBidB := bookB.BestBid()
+			if bestBidA == nil || bestBidB == nil {
+				continue
+			}
+
+			if bestBidA.Price < bestBidB.Price {
+				best.A = a.Name()
+				best.B = b.Name()
+				best.BestBid = bestBidA.Price
+				best.BestAsk = bookB.BestAsk().Price
+			} else {
+				best.A = b.Name()
+				best.B = a.Name()
+				best.BestBid = bestBidB.Price
+				best.BestAsk = bookA.BestAsk().Price
+			}
+
+			best.Spread = util.Round(best.BestAsk-best.BestBid, 10_000)
+			bestSpreads = append(bestSpreads, best)
+		}
+		data[symbol] = bestSpreads
+	}
+	datach <- data
+}
+
+
 
 // package main
 
