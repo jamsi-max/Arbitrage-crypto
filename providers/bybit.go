@@ -1,7 +1,6 @@
 package providers
 
 import (
-	"fmt"
 	"log"
 
 	"github.com/gorilla/websocket"
@@ -9,38 +8,34 @@ import (
 )
 
 type BybitMessage struct{
-	Op string `json:"op"`
+	Op   string   `json:"op"`
 	Args []string `json:"args"`
 }
 
 type BybitProvider struct{
-	Orderbooks orderbook.Orderbook
+	Orderbooks orderbook.Orderbooks
 	symbols []string
 }
 
-func NewBybitProvider(feedch chan orderbook.DataFeed, symbols []string) *BinanceProvider {
+func NewBybitProvider(symbols []string) *BybitProvider {
 	books := orderbook.Orderbooks{}
 	for _, symbol := range symbols {
 		books[symbol] = orderbook.NewBook(symbol)
 	}
 
-	return &BinanceProvider{
+	return &BybitProvider{
 		Orderbooks: books,
 		symbols:    symbols,
-		feedch:     feedch,
 	}
 }
-// func NewBybitProvider(symbols []string) *BybitProvider  {
-// 	books := orderbook.Orderbook{}
-// 	for _, symbol := range symbols{
-// 		books[symbol] = orderbook.NewBook(symbol)
-// 	}
-	
-// 	return &BybitProvider{
-// 		Orderbooks: books,
-// 		symbols: symbols,
-// 	}
-// }
+
+func (p *BybitProvider) Name() string {
+	return "Bybit"
+}
+
+func (p *BybitProvider) GetOrderbooks() orderbook.Orderbooks {
+	return p.Orderbooks
+}
 
 func (p *BybitProvider) Start() error{
 	ws, _, err := websocket.DefaultDialer.Dial("wss://stream.bybit.com/v5/public/linear", nil)
@@ -50,10 +45,11 @@ func (p *BybitProvider) Start() error{
 
 	msg := BybitMessage{
 		Op: "subscribe",
-		Args: []string{"orderbook.1.BTCUSDT"},
+		Args: []string{"orderbook.1.BTCUSDT", "orderbook.1.ETHUSDT"},
+		// Args: p.symbols,
 	}
-	
-	if err = ws.WriteJSON(msg); err!=nil{
+
+	if err = ws.WriteJSON(msg); err!=nil {
 		log.Fatal(err)
 	}
 
@@ -65,7 +61,17 @@ func (p *BybitProvider) Start() error{
 				break
 			}
 
-			fmt.Println(msg)
+			if msg.Type == "delta" {
+				book := p.Orderbooks[msg.Topic]
+				for _, ask := range msg.Data.A {
+					price, size := parseSnapShotEntry(ask)
+					book.Asks.Update(price, size)
+				}
+				for _, bid := range msg.Data.B {
+					price, size := parseSnapShotEntry(bid)
+					book.Bids.Update(price, size)
+				}
+			}
 		}
 	}()
 

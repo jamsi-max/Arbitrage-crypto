@@ -17,10 +17,21 @@ var symbols = []string{
 	"ADAUSD",
 }
 
+type WSConn struct {
+	*websocket.Conn
+	Topic  string
+	Symbols []string
+}
+
 type Message struct {
 	Type    string   `json:"type"`
 	Topic   string   `json:"topic"`
 	Symbols []string `json:"symbols"`
+}
+
+type MessageSpreads struct {
+	Symbol  string                  `json:"symbol"`
+	Spreads []orderbook.CrossSpread `json:"spreads"`
 }
 
 var upgrader = websocket.Upgrader{
@@ -28,36 +39,33 @@ var upgrader = websocket.Upgrader{
 }
 
 type Server struct {
-	bsch chan map[string][]orderbook.BestSpread
-	lock sync.RWMutex
-	// conns map[string][]*websocket.Conn
-	// conns map[*websocket.Conn]bool
-	conns map[string]map[*websocket.Conn]bool
+	crossSpreadch chan map[string][]orderbook.CrossSpread
+	lock          sync.RWMutex
+	conns         map[string]map[*WSConn]bool
 }
 
-func NewServer(bsch chan map[string][]orderbook.BestSpread) *Server {
+func NewServer(crossSpreadch chan map[string][]orderbook.CrossSpread) *Server {
 	s :=  &Server{
-		bsch: bsch,
-		conns: make(map[string]map[*websocket.Conn]bool),
+		crossSpreadch: crossSpreadch,
+		conns: make(map[string]map[*WSConn]bool),
 	}
-
 	for _, symbol := range symbols {
-		s.conns[symbol] = map[*websocket.Conn]bool{}
+		s.conns[symbol] = map[*WSConn]bool{}
 	}
-
 	return s
 }
 
 func (s *Server) Start() error {
-	http.HandleFunc("/bestspreads", s.handleBestSpreads)
 	http.HandleFunc("/", s.handleWS)
 	go s.writeLoop()
 	return http.ListenAndServe(":4000", nil)
 }
 
-func (s *Server) unregisterConn(ws *websocket.Conn) {
+func (s *Server) unregisterConn(ws *WSConn) {
 	s.lock.Lock()
-	// delete(s.conns, ws)
+	for _, symbol := range ws.Symbols {
+		delete(s.conns[symbol], ws)
+	}
 	s.lock.Unlock()
 
 	fmt.Printf("unregistered connection %s\n", ws.RemoteAddr())
@@ -65,26 +73,37 @@ func (s *Server) unregisterConn(ws *websocket.Conn) {
 	ws.Close()
 }
 
-func (s *Server) registerConn(symbol string, ws *websocket.Conn) {
-	s.conns[symbol][ws] = true
-
-	fmt.Printf("registered connection to symbol %s %s\n", symbol, ws.RemoteAddr())
+func (s *Server) registerConn(ws *WSConn) {
+	s.lock.Lock()
+	defer s.lock.Unlock()
+	for _, symbol := range ws.Symbols {
+		s.conns[symbol][ws] = true
+		fmt.Printf("registered connection to symbol %s %s\n", symbol, ws.RemoteAddr())
+	}	
 }
 
 func (s *Server) writeLoop() {
-	for data := range s.bsch {
+	for data := range s.crossSpreadch {
+
+		// fmt.Printf("%+v\n", data) // <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+
 		for symbol, spreads := range data {
 			for ws := range s.conns[symbol] {
-				ws.WriteJSON(spreads)
+				msg := MessageSpreads{
+					Symbol: symbol,
+					Spreads: spreads,
+				}
+				if err := ws.WriteJSON(msg); err != nil {
+					fmt.Println("socket write error:", err)
+					s.unregisterConn(ws)
+				}
 			}
 		}
 	}
 }
 
 func (s *Server) readLoop(ws *websocket.Conn) {
-	defer func() {
-		s.unregisterConn(ws)	
-	}()
+	defer ws.Close()
 
 	for {
 		msg := Message{}
@@ -100,11 +119,19 @@ func (s *Server) readLoop(ws *websocket.Conn) {
 }
 
 func (s *Server) handleSocketMessage(ws *websocket.Conn, msg Message) error {
-	for _, symbol := range msg.Symbols {
-		s.registerConn(symbol, ws)
+	// wsConn := &WSConn{}
+	if msg.Topic == "" || msg.Symbols == nil {
+		return fmt.Errorf("topic: %v; symbols: %v", msg.Topic, msg.Symbols)
 	}
+	s.registerConn(&WSConn{ws, msg.Topic, msg.Symbols})
 	return nil
 }
+// func (s *Server) handleSocketMessage(ws *websocket.Conn, msg Message) error {
+// 	for _, symbol := range msg.Symbols {
+// 		s.registerConn(symbol, ws)
+// 	}
+// 	return nil
+// }
 
 func (s *Server) handleWS(w http.ResponseWriter, r *http.Request) {
 	ws, err := upgrader.Upgrade(w, r, nil)

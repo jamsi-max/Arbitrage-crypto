@@ -1,17 +1,17 @@
 package providers
 
 import (
-	"github.com/jamsi-max/arbitrage/orderbook"
 	ws "github.com/aopoltorzhicky/go_kraken/websocket"
+	"github.com/jamsi-max/arbitrage/orderbook"
+	"github.com/sirupsen/logrus"
 )
 
 type KrakenProvider struct {
 	Orderbooks orderbook.Orderbooks
 	symbols []string
-	feedch chan orderbook.DataFeed
 }
 
-func NewKrakenProvider(feedch chan orderbook.DataFeed, symbols []string) *KrakenProvider {
+func NewKrakenProvider(symbols []string) *KrakenProvider {
 	books := orderbook.Orderbooks{}
 	for _, symbol := range symbols {
 		books[symbol] = orderbook.NewBook(symbol)
@@ -20,7 +20,6 @@ func NewKrakenProvider(feedch chan orderbook.DataFeed, symbols []string) *Kraken
 	return &KrakenProvider{
 		Orderbooks: books,
 		symbols:    symbols,
-		feedch:     feedch,
 	}
 }
 
@@ -33,7 +32,7 @@ func (p *KrakenProvider) GetOrderbooks() orderbook.Orderbooks{
 }
 
 func (p *KrakenProvider) Start() error {
-	kraken := ws.NewKraken(ws.ProdBaseURL)
+	kraken := ws.NewKraken(ws.ProdBaseURL, ws.WithLogLevel(logrus.DebugLevel))
 	if err := kraken.Connect(); err != nil {
 		return err
 	}

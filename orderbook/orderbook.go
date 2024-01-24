@@ -10,21 +10,17 @@ import (
 	"github.com/VictorLowther/btree"
 )
 
-type BestSpread struct {
-	Symbol  string
-	A       string
-	B       string
-	BestBid float64
-	BestAsk float64
-	Spread  float64
+type BestPrice struct {
+	Provider string
+	Price    float64
+	Size     float64
 }
 
-type DataFeed struct{
-	Provider string
-	Symbol string
-	BestAsk float64
-	BestBid float64
-	Spread float64
+type CrossSpread struct {
+	Symbol  string
+	BestAsk BestPrice
+	BestBid BestPrice
+	Spread  float64
 }
 
 type Provider interface {
@@ -37,8 +33,8 @@ type Orderbooks map[string]*Book
 
 type Book struct{
 	Symbol string
-	Asks *Limits
-	Bids *Limits
+	Asks   *Limits
+	Bids   *Limits
 }
 
 func NewBook(symbol string) *Book{
@@ -162,7 +158,24 @@ func (l *Limits) Update(price float64, size float64) {
 	l.data.Insert(limit)
 }
 
-func (l *Limits) addOrder(price float64, o *Order){
+type BestSpread struct {
+	Symbol  string
+	A       string
+	B       string
+	BestBid float64
+	BestAsk float64
+	Spread  float64
+}
+
+type DataFeed struct{
+	Provider string
+	Symbol string
+	BestAsk float64
+	BestBid float64
+	Spread float64
+}
+
+func (l *Limits) addOrder(price float64, o *Order) {
 	if o.isBid != l.isBids{
 		panic("the side of the limits does not match the side of the odrer")
 	}
@@ -233,18 +246,18 @@ func NewOrderbookFromFile(pair, askSrc, bidSrc string) (*Orderbook, error) {
 	}, nil
 }
 
-type BestPrice struct{
-	Provider string
-	Price    float64
-	Size     float64
-}
+// type BestPrice struct{
+// 	Provider string
+// 	Price    float64
+// 	Size     float64
+// }
 
-type CrossSpread struct{
-	Symbol  string
-	BestAsk BestPrice
-	BestBid BestPrice
-	Spread  float64
-}
+// type CrossSpread struct{
+// 	Symbol  string
+// 	BestAsk BestPrice
+// 	BestBid BestPrice
+// 	Spread  float64
+// }
 
 type ByBestAsk struct { LimitMap }
 

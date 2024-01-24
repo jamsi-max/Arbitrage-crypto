@@ -11,10 +11,10 @@ import (
 type BinanceProvider struct {
 	Orderbooks orderbook.Orderbooks
 	symbols []string
-	feedch chan orderbook.DataFeed
+	// feedch chan orderbook.DataFeed
 }
 
-func NewBinanceOrderbooks(feedch chan orderbook.DataFeed, symbols []string) *BinanceProvider {
+func NewBinanceOrderbooks(symbols []string) *BinanceProvider {
 	books := orderbook.Orderbooks{}
 	for _, symbol := range symbols {
 		books[symbol] = orderbook.NewBook(symbol)
@@ -23,7 +23,7 @@ func NewBinanceOrderbooks(feedch chan orderbook.DataFeed, symbols []string) *Bin
 	return &BinanceProvider{
 		Orderbooks: books,
 		symbols:    symbols,
-		feedch:     feedch,
+		// feedch:     feedch,
 	}
 }
 

@@ -7,7 +7,7 @@ import (
 	"github.com/jamsi-max/arbitrage/orderbook"
 	"github.com/jamsi-max/arbitrage/providers"
 	"github.com/jamsi-max/arbitrage/socket"
-	// "github.com/jamsi-max/arbitrage//util"
+	"github.com/jamsi-max/arbitrage/util"
 )
 
 var symbols = []string{
@@ -21,22 +21,26 @@ var pairs = map[string]map[string]string{
 	"ADAUSD": {
 		"Binance":  "ADAUSDT",
 		"Kraken":   "ADA/USD",
-		"Coinbase": "ADA-USD", 
+		"Coinbase": "ADA-USD",
+		"Bybit":    "orderbook.1.ADAUSDT",
 	},
 	"DOGEUSD": {
 		"Binance":  "DOGEUSDT",
 		"Kraken":   "XDG/USD",
-		"Coinbase": "DOGE-USD", 
+		"Coinbase": "DOGE-USD",
+		"Bybit":    "orderbook.1.DOGEUSDT", 
 	},
 	"BTCUSD": {
 		"Binance":  "BTCUSDT",
 		"Kraken":   "XBT/USD",
-		"Coinbase": "BTC-USD", 
+		"Coinbase": "BTC-USD",
+		"Bybit":    "orderbook.1.BTCUSDT", 
 	},
 	"ETHUSD": {
 		"Binance":  "ETHUSDT",
 		"Kraken":   "ETH/USD",
 		"Coinbase": "ETH-USD",
+		"Bybit":    "orderbook.1.ETHUSDT", 
 	},
 }
 
@@ -53,11 +57,11 @@ func mapSymbolsFor(provider string) []string {
 }
 
 func main() {
-	datach := make(chan orderbook.DataFeed, 1024)
 	pvrs := []orderbook.Provider{
-		providers.NewKrakenProvider(datach, mapSymbolsFor("Kraken")),
-		providers.NewCoinbaseProvider(datach, mapSymbolsFor("Coinbase")),
-		providers.NewBinanceOrderbooks(datach, mapSymbolsFor("Binance")),
+		providers.NewKrakenProvider(mapSymbolsFor("Kraken")),
+		providers.NewCoinbaseProvider(mapSymbolsFor("Coinbase")),
+		providers.NewBinanceOrderbooks(mapSymbolsFor("Binance")),
+		providers.NewBybitProvider(mapSymbolsFor("Bybit")),
 	}
 
 	for _, provider := range pvrs {
@@ -66,61 +70,24 @@ func main() {
 		}
 	}
 
-	bestSpreadch := make(chan map[string][]orderbook.BestSpread, 1024)
+	crossSpreadch := make(chan map[string][]orderbook.CrossSpread, 1024)
 	go func() {
 		ticker := time.NewTicker(time.Millisecond * 100)
 		for {
-			calcBestSpreads(bestSpreadch, pvrs)
+			calcCrossSpreads(crossSpreadch, pvrs)
 			<-ticker.C
 		}
   }()
 
-	socketServer := socket.NewServer(bestSpreadch)
+	socketServer := socket.NewServer(crossSpreadch)
 	socketServer.Start()
-	// go func() {
-	// 	ticker := time.NewTicker(time.Millisecond * 100)
-	// 	for {
-	// 		for _, p := range pvrs {
-	// 			for _, book := range p.GetOrderbooks() {
-	// 				var (
-	// 					spread = book.Spread()
-	// 					bestAsk = book.BestAsk()
-	// 					bestBid = book.BestBid()
-	// 				)
-	// 				if bestAsk == nil || bestBid == nil {
-	// 					continue
-	// 				}
-	// 				datach <- orderbook.DataFeed{
-	// 					Provider: p.Name(),
-	// 					Symbol: book.Symbol,
-	// 					BestAsk: bestAsk.Price,
-	// 					BestBid: bestBid.Price,
-	// 					Spread: spread,
-	// 				}
-	// 			}
-	// 		}
-	// 		<-ticker.C
-	// 	}
-  // }()
-
-	
-
-	// for data := range datach {
-	// 	fmt.Println(data)
-	// }
-
-	// for data := range datach {
-	// 		fmt.Printf("[%s | %s] ASK %f %f BID [%f]\n", data.Provider, data.Symbol, data.BestAsk, data.BestBid, data.Spread)
-	// }
-
-	// select {}
 }
 
-func calcBestSpreads(datach chan map[string][]orderbook.BestSpread, pvrs []orderbook.Provider) {
-	data := map[string][]orderbook.BestSpread{}
+func calcCrossSpreads(datach chan map[string][]orderbook.CrossSpread, pvrs []orderbook.Provider) {
+	data := map[string][]orderbook.CrossSpread{}
 
 	for _, symbol := range symbols{
-		bestSpreads := []orderbook.BestSpread{}
+		crossSpreads := []orderbook.CrossSpread{}
 		for i := 0; i < len(pvrs); i++ {
 			a := pvrs[i]
 			var b orderbook.Provider
@@ -129,87 +96,43 @@ func calcBestSpreads(datach chan map[string][]orderbook.BestSpread, pvrs []order
 			} else {
 				b = pvrs[i+1]
 			}
-			bookA := a.GetOrderbooks()[getSymbolForProvider(a.Name(), symbol)]
-			bookB := b.GetOrderbooks()[getSymbolForProvider(b.Name(), symbol)]
 
-			best := orderbook.BestSpread{
-				Symbol: symbol,
-			}
-
-			bestBidA := bookA.BestBid()
-			bestBidB := bookB.BestBid()
+			var (
+				crossSpread = orderbook.CrossSpread{
+					Symbol: symbol,
+				}
+				bestAsk  = orderbook.BestPrice{}
+				bestBid  = orderbook.BestPrice{}
+				bookA    = a.GetOrderbooks()[getSymbolForProvider(a.Name(), symbol)]
+			  bookB    = b.GetOrderbooks()[getSymbolForProvider(b.Name(), symbol)]
+				bestBidA = bookA.BestBid()
+			  bestBidB = bookB.BestBid()
+			)
 			if bestBidA == nil || bestBidB == nil {
 				continue
 			}
-
 			if bestBidA.Price < bestBidB.Price {
-				best.A = a.Name()
-				best.B = b.Name()
-				best.BestBid = bestBidA.Price
-				best.BestAsk = bookB.BestAsk().Price
+				bestBid.Provider = a.Name()
+				bestAsk.Provider = b.Name()
+				bestBid.Price = bestBidA.Price
+				bestBid.Size = bestBidA.TotalVolume
+				bestAsk.Price = bookB.BestAsk().Price
+				bestAsk.Size = bookB.BestAsk().TotalVolume
 			} else {
-				best.A = b.Name()
-				best.B = a.Name()
-				best.BestBid = bestBidB.Price
-				best.BestAsk = bookA.BestAsk().Price
+				bestBid.Provider = b.Name()
+				bestAsk.Provider = a.Name()
+				bestBid.Price = bestBidB.Price
+				bestBid.Size = bestBidB.TotalVolume
+				bestAsk.Price = bookA.BestAsk().Price
+				bestAsk.Size = bookA.BestAsk().TotalVolume
 			}
 
-			best.Spread = util.Round(best.BestAsk-best.BestBid, 10_000)
-			bestSpreads = append(bestSpreads, best)
+			crossSpread.Spread = util.Round(bestAsk.Price-bestBid.Price, 10_000)
+			crossSpread.BestAsk = bestAsk
+			crossSpread.BestBid = bestBid
+			crossSpreads =append(crossSpreads, crossSpread)
 		}
-		data[symbol] = bestSpreads
+		data[symbol] = crossSpreads
 	}
 	datach <- data
 }
-
-
-
-// package main
-
-// import (
-// 	"fmt"
-// 	"log"
-
-// 	"github.com/gorilla/websocket"
-// 	"github.com/jamsi-max/arbitrage/providers"
-// )
-
-// type BybitMessage struct {
-// 	Op   string   `json:"op"`
-// 	Args []string `json:"args"`
-// }
-
-// func main() {
-
-// 	bybit := providers.NewBybitProvider([]string{"orderbook.1.BTCUSDT"})
-// 	if err := bybit.Start(); err != nil {
-// 		log.Fatal(err)
-// 	}
-
-// 	return
-// 	ws, _, err := websocket.DefaultDialer.Dial("wss://stream.bybit.com/v5/public/linear", nil)
-// 	if err != nil {
-// 		log.Fatalln(err)
-// 	}
-
-// 	go func() {
-// 		for {
-// 			_, b, err := ws.ReadMessage()
-// 			if err != nil {
-// 				log.Fatalln(err)
-// 			}
-
-// 			fmt.Println(string(b))
-// 		}
-// 	}()
-
-// 	msg := BybitMessage{
-// 		Op:   "subscribe",
-// 		Args: []string{"orderbook.1.BTCUSDT"},
-// 	}
-
-// 	if err = ws.WriteJSON(msg); err != nil {
-// 		log.Fatalln(err)
-// 	}
-// 	select {}
-// }
