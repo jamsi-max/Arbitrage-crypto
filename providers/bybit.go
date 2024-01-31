@@ -45,8 +45,8 @@ func (p *BybitProvider) Start() error{
 
 	msg := BybitMessage{
 		Op: "subscribe",
-		Args: []string{"orderbook.1.BTCUSDT", "orderbook.1.ETHUSDT"},
-		// Args: p.symbols,
+		// Args: []string{"orderbook.1.BTCUSDT", "orderbook.1.LTCUSDT"},
+		Args: p.symbols,
 	}
 
 	if err = ws.WriteJSON(msg); err!=nil {
@@ -62,6 +62,7 @@ func (p *BybitProvider) Start() error{
 			}
 
 			if msg.Type == "delta" {
+				// log.Printf("%+v", msg)   //>>>>>>>>>>>>>>>>>>>>>>>>>
 				book := p.Orderbooks[msg.Topic]
 				for _, ask := range msg.Data.A {
 					price, size := parseSnapShotEntry(ask)
@@ -71,6 +72,7 @@ func (p *BybitProvider) Start() error{
 					price, size := parseSnapShotEntry(bid)
 					book.Bids.Update(price, size)
 				}
+				
 			}
 		}
 	}()

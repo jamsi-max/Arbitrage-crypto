@@ -10,16 +10,20 @@ import (
 	"github.com/jamsi-max/arbitrage/orderbook"
 )
 
-var symbols = []string{
-	"BTCUSD",
-	"ETHUSD",
-	"DOGEUSD",
-	"ADAUSD",
+var symbols = map[string]bool{
+	// "BTCUSD": true,
+	"SOLUSD": true,
+	"XLMUSD": true,
+	// "ETHUSD",
+	// "DOGEUSD",
+	// "ADAUSD",
+	// "LTCUSD",
+	// "SOLUSD",
 }
 
 type WSConn struct {
 	*websocket.Conn
-	Topic  string
+	Topic   string
 	Symbols []string
 }
 
@@ -45,11 +49,11 @@ type Server struct {
 }
 
 func NewServer(crossSpreadch chan map[string][]orderbook.CrossSpread) *Server {
-	s :=  &Server{
+	s := &Server{
 		crossSpreadch: crossSpreadch,
-		conns: make(map[string]map[*WSConn]bool),
+		conns:         make(map[string]map[*WSConn]bool),
 	}
-	for _, symbol := range symbols {
+	for symbol := range symbols {
 		s.conns[symbol] = map[*WSConn]bool{}
 	}
 	return s
@@ -77,20 +81,21 @@ func (s *Server) registerConn(ws *WSConn) {
 	s.lock.Lock()
 	defer s.lock.Unlock()
 	for _, symbol := range ws.Symbols {
-		s.conns[symbol][ws] = true
-		fmt.Printf("registered connection to symbol %s %s\n", symbol, ws.RemoteAddr())
-	}	
+		if _, ok := symbols[symbol]; ok {
+			s.conns[symbol][ws] = true
+			fmt.Printf("registered connection to symbol %s %s\n", symbol, ws.RemoteAddr())
+		}
+	}
 }
 
 func (s *Server) writeLoop() {
 	for data := range s.crossSpreadch {
 
-		// fmt.Printf("%+v\n", data) // <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
-
 		for symbol, spreads := range data {
+			// fmt.Printf("%+v %+v\n", symbol, spreads) // <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 			for ws := range s.conns[symbol] {
 				msg := MessageSpreads{
-					Symbol: symbol,
+					Symbol:  symbol,
 					Spreads: spreads,
 				}
 				if err := ws.WriteJSON(msg); err != nil {
@@ -111,7 +116,7 @@ func (s *Server) readLoop(ws *websocket.Conn) {
 			fmt.Println("socket read error:", err)
 			break
 		}
-		if err := s.handleSocketMessage(ws, msg); err != nil{
+		if err := s.handleSocketMessage(ws, msg); err != nil {
 			fmt.Println("handle msg error:", err)
 			break
 		}
@@ -126,6 +131,7 @@ func (s *Server) handleSocketMessage(ws *websocket.Conn, msg Message) error {
 	s.registerConn(&WSConn{ws, msg.Topic, msg.Symbols})
 	return nil
 }
+
 // func (s *Server) handleSocketMessage(ws *websocket.Conn, msg Message) error {
 // 	for _, symbol := range msg.Symbols {
 // 		s.registerConn(symbol, ws)

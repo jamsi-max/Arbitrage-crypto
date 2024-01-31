@@ -11,37 +11,65 @@ import (
 )
 
 var symbols = []string{
-	"BTCUSD",
-	"ETHUSD",
-	"DOGEUSD",
-	"ADAUSD",
+	// "BTCUSD",
+	// "ETHUSD",
+	// "DOGEUSD",
+	// "ADAUSD",
+	// "LTCUSD",
+	"SOLUSD",
+	"XLMUSD",
 }
 
 var pairs = map[string]map[string]string{
-	"ADAUSD": {
-		"Binance":  "ADAUSDT",
-		"Kraken":   "ADA/USD",
-		"Coinbase": "ADA-USD",
-		"Bybit":    "orderbook.1.ADAUSDT",
+	"XLMUSD": {
+		"Binance":  "XLMUSDT",
+		// "Kraken":   "XLM/USD",
+		"Coinbase": "XLM-USD",
+		"Bybit":    "orderbook.1.XLMUSDT",
+		"Cucoin":   "/market/ticker:XLM-USDT",
 	},
-	"DOGEUSD": {
-		"Binance":  "DOGEUSDT",
-		"Kraken":   "XDG/USD",
-		"Coinbase": "DOGE-USD",
-		"Bybit":    "orderbook.1.DOGEUSDT", 
+	"SOLUSD": {
+		"Binance":  "SOLUSDT",
+		// "Kraken":   "SOL/USD",
+		"Coinbase": "SOL-USD",
+		"Bybit":    "orderbook.1.SOLUSDT",
+		"Cucoin":   "/market/ticker:SOL-USDT",
 	},
-	"BTCUSD": {
-		"Binance":  "BTCUSDT",
-		"Kraken":   "XBT/USD",
-		"Coinbase": "BTC-USD",
-		"Bybit":    "orderbook.1.BTCUSDT", 
-	},
-	"ETHUSD": {
-		"Binance":  "ETHUSDT",
-		"Kraken":   "ETH/USD",
-		"Coinbase": "ETH-USD",
-		"Bybit":    "orderbook.1.ETHUSDT", 
-	},
+	// "ADAUSD": {
+	// 	"Binance":  "ADAUSDT",
+	// 	"Kraken":   "ADA/USD",
+	// 	"Coinbase": "ADA-USD",
+	// 	"Bybit":    "orderbook.1.ADAUSDT",
+	// 	"Cucoin":   "/market/ticker:ADA-USDT",
+	// },
+	// "DOGEUSD": {
+	// 	"Binance":  "DOGEUSDT",
+	// 	"Kraken":   "XDG/USD",
+	// 	"Coinbase": "DOGE-USD",
+	// 	"Bybit":    "orderbook.1.DOGEUSDT",
+	// 	"Cucoin":   "/market/ticker:DOGE-USDT",
+	// },
+	// "BTCUSD": {
+	// 	"Binance":  "BTCUSDT",
+	// 	// "Kraken":   "XBT/USD",
+	// 	"Coinbase": "BTC-USD",
+	// 	"Bybit":    "orderbook.1.BTCUSDT",
+	// 	"Cucoin":   "/market/ticker:BTC-USDT",
+	// },
+	// "ETHUSD": {
+	// 	"Binance":  "ETHUSDT",
+	// 	"Kraken":   "ETH/USD",
+	// 	"Coinbase": "ETH-USD",
+	// 	"Bybit":    "orderbook.1.ETHUSDT",
+	// 	"Cucoin":   "/market/ticker:ETH-USDT",
+	// },
+	// "LTCUSD": {
+	// 	"Binance":  "LTCUSDT",
+	// 	"Kraken":   "LTC/USD",
+	// 	"Coinbase": "LTC-USD",
+	// 	"Bybit":    "orderbook.1.LTCUSDT",
+	// 	"Cucoin":   "/market/ticker:LTC-USDT",
+	// },
 }
 
 func getSymbolForProvider(p string, symbol string) string {
@@ -58,10 +86,11 @@ func mapSymbolsFor(provider string) []string {
 
 func main() {
 	pvrs := []orderbook.Provider{
-		providers.NewKrakenProvider(mapSymbolsFor("Kraken")),
-		providers.NewCoinbaseProvider(mapSymbolsFor("Coinbase")),
-		providers.NewBinanceOrderbooks(mapSymbolsFor("Binance")),
+		// providers.NewKrakenProvider(mapSymbolsFor("Kraken")),
+		// providers.NewCoinbaseProvider(mapSymbolsFor("Coinbase")),
+		// providers.NewBinanceOrderbooks(mapSymbolsFor("Binance")),
 		providers.NewBybitProvider(mapSymbolsFor("Bybit")),
+		providers.NewCucoinProvider(mapSymbolsFor("Cucoin")),
 	}
 
 	for _, provider := range pvrs {
@@ -77,7 +106,7 @@ func main() {
 			calcCrossSpreads(crossSpreadch, pvrs)
 			<-ticker.C
 		}
-  }()
+	}()
 
 	socketServer := socket.NewServer(crossSpreadch)
 	socketServer.Start()
@@ -86,9 +115,10 @@ func main() {
 func calcCrossSpreads(datach chan map[string][]orderbook.CrossSpread, pvrs []orderbook.Provider) {
 	data := map[string][]orderbook.CrossSpread{}
 
-	for _, symbol := range symbols{
+	for _, symbol := range symbols {
 		crossSpreads := []orderbook.CrossSpread{}
 		for i := 0; i < len(pvrs); i++ {
+		// for i, j := 0, len(pvrs)-1; i < len(pvrs)-1;  { if j-1 == i {j = len(pvrs)-1 i++} j--}
 			a := pvrs[i]
 			var b orderbook.Provider
 			if len(pvrs)-1 == i {
@@ -104,14 +134,15 @@ func calcCrossSpreads(datach chan map[string][]orderbook.CrossSpread, pvrs []ord
 				bestAsk  = orderbook.BestPrice{}
 				bestBid  = orderbook.BestPrice{}
 				bookA    = a.GetOrderbooks()[getSymbolForProvider(a.Name(), symbol)]
-			  bookB    = b.GetOrderbooks()[getSymbolForProvider(b.Name(), symbol)]
+				bookB    = b.GetOrderbooks()[getSymbolForProvider(b.Name(), symbol)]
 				bestBidA = bookA.BestBid()
-			  bestBidB = bookB.BestBid()
+				bestBidB = bookB.BestBid()
 			)
 			if bestBidA == nil || bestBidB == nil {
 				continue
 			}
 			if bestBidA.Price < bestBidB.Price {
+				// log.Println("a<b", a.Name(),bestBidA.Price, b.Name(), bestBidB.Price, "b-a:", bestBidB.Price-bestBidA.Price)
 				bestBid.Provider = a.Name()
 				bestAsk.Provider = b.Name()
 				bestBid.Price = bestBidA.Price
@@ -119,6 +150,7 @@ func calcCrossSpreads(datach chan map[string][]orderbook.CrossSpread, pvrs []ord
 				bestAsk.Price = bookB.BestAsk().Price
 				bestAsk.Size = bookB.BestAsk().TotalVolume
 			} else {
+				// log.Println("a>b", a.Name(),bestBidA.Price,b.Name(), bestBidB.Price,"a-b:", bestBidA.Price - bestBidB.Price)
 				bestBid.Provider = b.Name()
 				bestAsk.Provider = a.Name()
 				bestBid.Price = bestBidB.Price
@@ -128,10 +160,12 @@ func calcCrossSpreads(datach chan map[string][]orderbook.CrossSpread, pvrs []ord
 			}
 
 			crossSpread.Spread = util.Round(bestAsk.Price-bestBid.Price, 10_000)
+			// log.Panicln(crossSpread.Spread)
 			crossSpread.BestAsk = bestAsk
 			crossSpread.BestBid = bestBid
-			crossSpreads =append(crossSpreads, crossSpread)
+			crossSpreads = append(crossSpreads, crossSpread)
 		}
+		// log.Println(symbol, crossSpreads)
 		data[symbol] = crossSpreads
 	}
 	datach <- data

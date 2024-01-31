@@ -23,7 +23,6 @@ func NewBinanceOrderbooks(symbols []string) *BinanceProvider {
 	return &BinanceProvider{
 		Orderbooks: books,
 		symbols:    symbols,
-		// feedch:     feedch,
 	}
 }
 
