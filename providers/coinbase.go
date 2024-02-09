@@ -56,6 +56,10 @@ func (c *CoinbaseProvider) Start() error {
 				break
 			}
 
+			if msg.Type == "errorsubscriptions" {
+				continue
+			}
+
 			if msg.Type == "l2update" {
 				c.handleUpdate(msg.ProductID, msg.Changes)
 			}

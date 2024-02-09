@@ -157,12 +157,6 @@ func (l *Limits) Update(price float64, size float64) {
 	limit := NewLimit(price)
 	limit.TotalVolume = size
 	l.data.Insert(limit)
-
-	// if l.Best() != nil {
-	// 	fmt.Println("-->", l.Best().Price, l.Best().TotalVolume)
-	// }
-	// fmt.Println("->",price, l.Best().Price)
-	// return
 }
 
 type BestSpread struct {

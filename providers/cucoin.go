@@ -114,7 +114,6 @@ func (c *CucoinProvider) Start() error {
 	go func() {
 		ticker := time.NewTicker(time.Millisecond * Timeout)
 		for {
-			// log.Println("pingPong")
 			ws.WriteJSON(MessageSubscribe{
 				Id:   connectId,
 				Type: "ping",
@@ -124,6 +123,7 @@ func (c *CucoinProvider) Start() error {
 	}()
 
 	go func() {
+		//SPEED REQUESTS SET
 		// ticker := time.NewTicker(time.Millisecond * 100)
 		for {
 			msg := CucoinSocketResponse{}
