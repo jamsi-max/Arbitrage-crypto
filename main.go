@@ -17,24 +17,32 @@ var symbols = []string{
 	// "ADAUSD",
 	// "LTCUSD",
 	"SOLUSD",
-	"XLMUSD",
+	// "XLMUSD",
+	// "WAXPUSD",
 }
 
 var pairs = map[string]map[string]string{
-	"XLMUSD": {
-		"Binance":  "XLMUSDT",
-		// "Kraken":   "XLM/USD",
-		"Coinbase": "XLM-USD",
-		"Bybit":    "orderbook.1.XLMUSDT",
-		"Cucoin":   "/market/ticker:XLM-USDT",
-	},
+	// "XLMUSD": {
+	// 	"Binance":  "XLMUSDT",
+	// 	"Kraken":   "XLM/USD",
+	// 	"Coinbase": "XLM-USD",
+	// 	"Bybit":    "orderbook.1.XLMUSDT",
+	// 	"Cucoin":   "/market/ticker:XLM-USDT",
+	// },
 	"SOLUSD": {
-		"Binance":  "SOLUSDT",
+		"Binance": "SOLUSDT",
 		// "Kraken":   "SOL/USD",
 		"Coinbase": "SOL-USD",
 		"Bybit":    "orderbook.1.SOLUSDT",
-		"Cucoin":   "/market/ticker:SOL-USDT",
+		"Cucoin":   "/market/level2:SOL-USDT",
 	},
+	// "WAXPUSD": {
+	// 	"Binance": "WAXPUSDT",
+	// 	// "Kraken":   "WAXP/USD",
+	// 	"Coinbase": "WAXP-USD",
+	// 	"Bybit":    "orderbook.1.WAXPUSDT",
+	// 	"Cucoin":   "/market/level1:WAX-USDT",
+	// },
 	// "ADAUSD": {
 	// 	"Binance":  "ADAUSDT",
 	// 	"Kraken":   "ADA/USD",
@@ -88,7 +96,7 @@ func main() {
 	pvrs := []orderbook.Provider{
 		// providers.NewKrakenProvider(mapSymbolsFor("Kraken")),
 		// providers.NewCoinbaseProvider(mapSymbolsFor("Coinbase")),
-		// providers.NewBinanceOrderbooks(mapSymbolsFor("Binance")),
+		// providers.NewBinanceProvider(mapSymbolsFor("Binance")),
 		providers.NewBybitProvider(mapSymbolsFor("Bybit")),
 		providers.NewCucoinProvider(mapSymbolsFor("Cucoin")),
 	}
@@ -117,15 +125,22 @@ func calcCrossSpreads(datach chan map[string][]orderbook.CrossSpread, pvrs []ord
 
 	for _, symbol := range symbols {
 		crossSpreads := []orderbook.CrossSpread{}
-		for i := 0; i < len(pvrs); i++ {
-		// for i, j := 0, len(pvrs)-1; i < len(pvrs)-1;  { if j-1 == i {j = len(pvrs)-1 i++} j--}
+		// for i := 0; i < len(pvrs); i++ {
+		for i, j := 0, 0; i < len(pvrs)-1; {
 			a := pvrs[i]
 			var b orderbook.Provider
-			if len(pvrs)-1 == i {
+			if len(pvrs) < 2 {
 				b = pvrs[0]
 			} else {
-				b = pvrs[i+1]
+				b = pvrs[j+1]
 			}
+			// a := pvrs[i]
+			// var b orderbook.Provider
+			// if len(pvrs)-1 == i {
+			// 	b = pvrs[0]
+			// } else {
+			// 	b = pvrs[i+1]
+			// }
 
 			var (
 				crossSpread = orderbook.CrossSpread{
@@ -138,9 +153,17 @@ func calcCrossSpreads(datach chan map[string][]orderbook.CrossSpread, pvrs []ord
 				bestBidA = bookA.BestBid()
 				bestBidB = bookB.BestBid()
 			)
+
 			if bestBidA == nil || bestBidB == nil {
 				continue
 			}
+
+			//DEBUG
+			// if b.Name() == "Cucoin"  {
+			// 	log.Println(b.Name(), bookB.BestAsk().Price)
+			// }
+			// DEBUG END
+
 			if bestBidA.Price < bestBidB.Price {
 				// log.Println("a<b", a.Name(),bestBidA.Price, b.Name(), bestBidB.Price, "b-a:", bestBidB.Price-bestBidA.Price)
 				bestBid.Provider = a.Name()
@@ -149,6 +172,9 @@ func calcCrossSpreads(datach chan map[string][]orderbook.CrossSpread, pvrs []ord
 				bestBid.Size = bestBidA.TotalVolume
 				bestAsk.Price = bookB.BestAsk().Price
 				bestAsk.Size = bookB.BestAsk().TotalVolume
+				// if symbol == "SOLUSD" && (a.Name() == "Cucoin" || b.Name() == "Cucoin"){
+				// 	log.Println("a<b",symbol, a.Name(), bestBid.Price, b.Name(), bestAsk.Price)
+				// }
 			} else {
 				// log.Println("a>b", a.Name(),bestBidA.Price,b.Name(), bestBidB.Price,"a-b:", bestBidA.Price - bestBidB.Price)
 				bestBid.Provider = b.Name()
@@ -157,6 +183,9 @@ func calcCrossSpreads(datach chan map[string][]orderbook.CrossSpread, pvrs []ord
 				bestBid.Size = bestBidB.TotalVolume
 				bestAsk.Price = bookA.BestAsk().Price
 				bestAsk.Size = bookA.BestAsk().TotalVolume
+				// if symbol == "SOLUSD" && (a.Name() == "Cucoin" || b.Name() == "Cucoin") {
+				// 	log.Println("a>b",symbol, b.Name(), bestBid.Price, a.Name(), bestAsk.Price)
+				// }
 			}
 
 			crossSpread.Spread = util.Round(bestAsk.Price-bestBid.Price, 10_000)
@@ -164,6 +193,13 @@ func calcCrossSpreads(datach chan map[string][]orderbook.CrossSpread, pvrs []ord
 			crossSpread.BestAsk = bestAsk
 			crossSpread.BestBid = bestBid
 			crossSpreads = append(crossSpreads, crossSpread)
+
+			if j < len(pvrs)-2 {
+				j++
+			} else {
+				i++
+				j = i
+			}
 		}
 		// log.Println(symbol, crossSpreads)
 		data[symbol] = crossSpreads

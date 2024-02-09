@@ -7,14 +7,14 @@ import (
 	"github.com/jamsi-max/arbitrage/orderbook"
 )
 
-type BybitMessage struct{
+type BybitMessage struct {
 	Op   string   `json:"op"`
 	Args []string `json:"args"`
 }
 
-type BybitProvider struct{
+type BybitProvider struct {
 	Orderbooks orderbook.Orderbooks
-	symbols []string
+	symbols    []string
 }
 
 func NewBybitProvider(symbols []string) *BybitProvider {
@@ -37,9 +37,9 @@ func (p *BybitProvider) GetOrderbooks() orderbook.Orderbooks {
 	return p.Orderbooks
 }
 
-func (p *BybitProvider) Start() error{
+func (p *BybitProvider) Start() error {
 	ws, _, err := websocket.DefaultDialer.Dial("wss://stream.bybit.com/v5/public/linear", nil)
-	if err != nil{
+	if err != nil {
 		log.Fatal(err)
 	}
 
@@ -49,12 +49,12 @@ func (p *BybitProvider) Start() error{
 		Args: p.symbols,
 	}
 
-	if err = ws.WriteJSON(msg); err!=nil {
+	if err = ws.WriteJSON(msg); err != nil {
 		log.Fatal(err)
 	}
 
-	go func(){
-		for{
+	go func() {
+		for {
 			msg := BybitSocketResponse{}
 			if err := ws.ReadJSON(&msg); err != nil {
 				log.Fatal(err)
@@ -62,7 +62,7 @@ func (p *BybitProvider) Start() error{
 			}
 
 			if msg.Type == "delta" {
-				// log.Printf("%+v", msg)   //>>>>>>>>>>>>>>>>>>>>>>>>>
+				// log.Printf("%v %+v",msg.Topic, msg.Data)   //>>>debug
 				book := p.Orderbooks[msg.Topic]
 				for _, ask := range msg.Data.A {
 					price, size := parseSnapShotEntry(ask)
@@ -72,7 +72,6 @@ func (p *BybitProvider) Start() error{
 					price, size := parseSnapShotEntry(bid)
 					book.Bids.Update(price, size)
 				}
-				
 			}
 		}
 	}()
@@ -80,10 +79,10 @@ func (p *BybitProvider) Start() error{
 	return nil
 }
 
-type BybitSocketResponse struct{
-	Topic string        `json:"topic"`
-	Type string         `json:"type"`
-	Data BybitOrderbook `json:"data"`
+type BybitSocketResponse struct {
+	Topic string         `json:"topic"`
+	Type  string         `json:"type"`
+	Data  BybitOrderbook `json:"data"`
 }
 
 type BybitOrderbook struct {

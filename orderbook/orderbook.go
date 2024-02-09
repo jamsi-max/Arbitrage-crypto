@@ -31,21 +31,21 @@ type Provider interface {
 
 type Orderbooks map[string]*Book
 
-type Book struct{
+type Book struct {
 	Symbol string
 	Asks   *Limits
 	Bids   *Limits
 }
 
-func NewBook(symbol string) *Book{
+func NewBook(symbol string) *Book {
 	return &Book{
 		Symbol: symbol,
-		Asks: NewLimits(false),
-		Bids: NewLimits(true),
+		Asks:   NewLimits(false),
+		Bids:   NewLimits(true),
 	}
 }
 
-func (b *Book) Spread() float64{
+func (b *Book) Spread() float64 {
 	if b.Asks.data.Len() == 0 || b.Bids.data.Len() == 0 {
 		return 0.0
 	}
@@ -54,15 +54,15 @@ func (b *Book) Spread() float64{
 	return bestAsk - bestBid
 }
 
-func (b *Book) BestBid() *Limit{
+func (b *Book) BestBid() *Limit {
 	return b.Bids.Best()
 }
 
-func (b *Book) BestAsk() *Limit{
+func (b *Book) BestAsk() *Limit {
 	return b.Asks.Best()
 }
 
-func getBidByPrice(price float64) btree.CompareAgainst[*Limit]{
+func getBidByPrice(price float64) btree.CompareAgainst[*Limit] {
 	return func(l *Limit) int {
 		switch {
 		case l.Price > price:
@@ -75,7 +75,8 @@ func getBidByPrice(price float64) btree.CompareAgainst[*Limit]{
 	}
 }
 
-func getAskByPrice(price float64) btree.CompareAgainst[*Limit]{
+func getAskByPrice(price float64) btree.CompareAgainst[*Limit] {
+
 	return func(l *Limit) int {
 		switch {
 		case l.Price < price:
@@ -96,21 +97,21 @@ func sortByBestAsk(a, b *Limit) bool {
 	return a.Price < b.Price
 }
 
-type Limits struct{
+type Limits struct {
 	isBids      bool
 	lock        sync.RWMutex
 	data        *btree.Tree[*Limit]
 	totalVolume float64
 }
 
-func NewLimits(isBids bool) *Limits{
+func NewLimits(isBids bool) *Limits {
 	f := sortByBestAsk
 	if isBids {
 		f = sortByBestBid
 	}
 	return &Limits{
 		isBids: isBids,
-		data: btree.New(f),
+		data:   btree.New(f),
 	}
 }
 
@@ -118,7 +119,7 @@ func (l *Limits) Len() int {
 	return l.data.Len()
 }
 
-func (l *Limits) Best() *Limit{
+func (l *Limits) Best() *Limit {
 	l.lock.RLock()
 	defer l.lock.RUnlock()
 
@@ -156,6 +157,12 @@ func (l *Limits) Update(price float64, size float64) {
 	limit := NewLimit(price)
 	limit.TotalVolume = size
 	l.data.Insert(limit)
+
+	// if l.Best() != nil {
+	// 	fmt.Println("-->", l.Best().Price, l.Best().TotalVolume)
+	// }
+	// fmt.Println("->",price, l.Best().Price)
+	// return
 }
 
 type BestSpread struct {
@@ -167,21 +174,21 @@ type BestSpread struct {
 	Spread  float64
 }
 
-type DataFeed struct{
+type DataFeed struct {
 	Provider string
-	Symbol string
-	BestAsk float64
-	BestBid float64
-	Spread float64
+	Symbol   string
+	BestAsk  float64
+	BestBid  float64
+	Spread   float64
 }
 
 func (l *Limits) addOrder(price float64, o *Order) {
-	if o.isBid != l.isBids{
+	if o.isBid != l.isBids {
 		panic("the side of the limits does not match the side of the odrer")
 	}
 
 	f := getAskByPrice(price)
-	if l.isBids{
+	if l.isBids {
 		f = getBidByPrice(price)
 	}
 
@@ -259,7 +266,7 @@ func NewOrderbookFromFile(pair, askSrc, bidSrc string) (*Orderbook, error) {
 // 	Spread  float64
 // }
 
-type ByBestAsk struct { LimitMap }
+type ByBestAsk struct{ LimitMap }
 
 func (ba ByBestAsk) Len() int { return len(ba.LimitMap.limits) }
 
@@ -290,15 +297,15 @@ func (ob *Orderbook) totalBidVolume() float64 {
 	return ob.bids.totalVolume
 }
 
-type Limit struct{
+type Limit struct {
 	Price       float64
 	Orders      []*Order
 	TotalVolume float64
 }
 
-func NewLimit(price float64) *Limit{
+func NewLimit(price float64) *Limit {
 	return &Limit{
-		Price: price,
+		Price:  price,
 		Orders: []*Order{},
 	}
 }
@@ -326,13 +333,13 @@ func (l *Limit) fillOrder(marketOrder *Order) {
 	}
 }
 
-func (l *Limit) addOrder(o *Order){
+func (l *Limit) addOrder(o *Order) {
 	l.Orders = append(l.Orders, o)
 	o.limitIndex = len(l.Orders)
 	l.TotalVolume += o.size
 }
 
-func (l *Limit) deleteOrder(o *Order){
+func (l *Limit) deleteOrder(o *Order) {
 	l.Orders[o.limitIndex] = l.Orders[len(l.Orders)-1]
 	l.Orders = l.Orders[:len(l.Orders)-1]
 
@@ -341,7 +348,7 @@ func (l *Limit) deleteOrder(o *Order){
 	}
 }
 
-type Order struct{
+type Order struct {
 	id         int64
 	size       float64
 	timestamp  int64
@@ -349,24 +356,24 @@ type Order struct{
 	limitIndex int
 }
 
-func NewOrder(isBid bool, size float64) *Order{
+func NewOrder(isBid bool, size float64) *Order {
 	return &Order{
-		id: rand.Int63n(100000),
-		size: size,
+		id:        rand.Int63n(100000),
+		size:      size,
 		timestamp: time.Now().UnixNano(),
-		isBid: isBid,
+		isBid:     isBid,
 	}
 }
 
-func NewBidOrder(size float64) *Order{
+func NewBidOrder(size float64) *Order {
 	return NewOrder(false, size)
 }
 
-func NewAskOrder(size float64) *Order{
+func NewAskOrder(size float64) *Order {
 	return NewOrder(false, size)
 }
 
-func (o *Order) isFilled() bool{
+func (o *Order) isFilled() bool {
 	return o.size == 0
 }
 

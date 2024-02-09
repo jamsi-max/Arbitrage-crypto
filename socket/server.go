@@ -13,7 +13,8 @@ import (
 var symbols = map[string]bool{
 	// "BTCUSD": true,
 	"SOLUSD": true,
-	"XLMUSD": true,
+	// "XLMUSD": true,
+	"WAXPUSD": true,
 	// "ETHUSD",
 	// "DOGEUSD",
 	// "ADAUSD",

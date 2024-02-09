@@ -24,10 +24,13 @@ type DataTokenModel struct {
 }
 
 type InstanceServers struct {
-	Endpoint string `json:"endpoint"`
-	Encrypt  bool   `json:"encrypt"`
-	Protocol string `json:"protocol"`
+	Endpoint     string        `json:"endpoint"`
+	Encrypt      bool          `json:"encrypt"`
+	Protocol     string        `json:"protocol"`
+	PingInterval time.Duration `json:"pingInterval"`
 }
+
+var Timeout time.Duration
 
 type CucoinProvider struct {
 	Orderbooks orderbook.Orderbooks
@@ -62,7 +65,7 @@ func GetTokenAndEndpoint() (string, string) {
 	r := bytes.NewReader(data)
 	resp, err := http.Post(ApiGetPublickToken, "application/json", r)
 	if err != nil {
-		log.Printf("Error get Token kukoin: %v", err)
+		log.Fatalf("Error get Token kukoin: %v", err)
 	}
 	defer resp.Body.Close()
 
@@ -72,10 +75,85 @@ func GetTokenAndEndpoint() (string, string) {
 	}
 
 	if t.Data.InstanceServers != nil && t.Data.InstanceServers[0].Endpoint != "" {
+		Timeout = t.Data.InstanceServers[0].PingInterval
 		return t.Data.Token, t.Data.InstanceServers[0].Endpoint
 	}
 
 	return t.Data.Token, "wss://ws-api-spot.kucoin.com/"
+}
+
+func (c *CucoinProvider) Start() error {
+	token, endpoint := GetTokenAndEndpoint()
+	connectId := time.Now().UnixNano()
+	wsURL := endpoint + "?token=" + token + "&[connectId=" + kucoin.IntToString(connectId) + "]"
+
+	ws, _, err := websocket.DefaultDialer.Dial(wsURL, nil)
+	if err != nil {
+		log.Fatal(err)
+	}
+	ws.ReadMessage()
+
+	for _, symbol := range c.symbols {
+		ws.WriteJSON(MessageSubscribe{
+			Id:             connectId,
+			Type:           "subscribe",
+			Topic:          symbol,
+			PrivateChannel: false,
+			Response:       true,
+		})
+	}
+
+	//DEBUG
+	// for {
+	// 	_, m, _ := ws.ReadMessage()
+	// 	fmt.Printf("%s\r", string(m))
+	// }
+	// select {}
+	// END DEBUG
+
+	go func() {
+		ticker := time.NewTicker(time.Millisecond * Timeout)
+		for {
+			// log.Println("pingPong")
+			ws.WriteJSON(MessageSubscribe{
+				Id:   connectId,
+				Type: "ping",
+			})
+			<-ticker.C
+		}
+	}()
+
+	go func() {
+		// ticker := time.NewTicker(time.Millisecond * 100)
+		for {
+			msg := CucoinSocketResponse{}
+			if err := ws.ReadJSON(&msg); err != nil {
+				log.Fatal("Cucoin readJSON err:", err)
+				break
+			}
+
+			if msg.Type == "message" {
+				book := c.Orderbooks[msg.Topic]
+				for _, asks := range msg.Data.Changes.Asks {
+					price, size := parseCucoinSnapShotEntry(asks)
+					book.Asks.Update(price, size)
+				}
+				for _, bids := range msg.Data.Changes.Bids {
+					price, size := parseCucoinSnapShotEntry(bids)
+					book.Bids.Update(price, size)
+				}
+			}
+			// <-ticker.C
+		}
+	}()
+
+	return nil
+}
+
+func parseCucoinSnapShotEntry(entry CucoinEntry) (float64, float64) {
+	price, _ := strconv.ParseFloat(entry[0], 64)
+	size, _ := strconv.ParseFloat(entry[1], 64)
+	return price, size
 }
 
 type MessageSubscribe struct {
@@ -86,78 +164,24 @@ type MessageSubscribe struct {
 	Response       bool   `json:"response"`
 }
 
-type CucoinMessage struct {
-	Id    string `json:"id,omitempty"`
+type CucoinSocketResponse struct {
+	// Id    string `json:"id,omitempty"`
 	Topic string `json:"topic"`
 	Type  string `json:"type"`
-	Data  *CucoinMessageData
+	Data  *CucoinOrderbook
 }
 
-type CucoinMessageData struct {
-	BestAsk     string `json:"bestAsk"`
-	BestAskSize string `json:"bestAskSize"`
-	BestBid     string `json:"bestBid"`
-	BestBidSize string `json:"bestBidSize"`
-	Price       string `json:"price"`
+type CucoinOrderbook struct {
+	Changes       *CucoinOrderbookChanges
+	SequenceEnd   int    `json:"sequenceEnd"`
+	SequenceStart int    `json:"sequenceStart"`
+	Symbol        string `json:"symbol"`
+	Time          int    `json:"time"`
 }
 
-func (c *CucoinProvider) Start() error {
-	token, endpoint := GetTokenAndEndpoint()
-	connectId := time.Now().UnixNano()
-	wsURL := endpoint + "?token=" + token + "&[connectId=" + kucoin.IntToString(connectId) + "]"
-
-	ws, _, err := websocket.DefaultDialer.Dial(wsURL, nil)
-	if err != nil {
-		return err
-	}
-	ws.ReadMessage()
-
-	for _, symbol := range c.symbols{
-		ws.WriteJSON(MessageSubscribe{
-			Id:             connectId,
-			Type:           "subscribe",
-			Topic:          symbol,
-			PrivateChannel: false,
-			Response:       true,
-		})
-	}
-	
-	go func() {
-		for {
-			_, message, err := ws.ReadMessage()
-			if err != nil {
-				log.Println("->", err)
-				break
-			}
-
-			msg := CucoinMessage{}
-			if err := json.Unmarshal(message, &msg); err != nil {
-				log.Println("-->", err)
-				break
-			}
-
-			if msg.Type == "message" {
-				c.cucoinHandleUpdate(msg.Topic, msg.Data)
-				// log.Printf("%+v", msg)
-			}
-		}
-	}()
-
-	return nil
+type CucoinOrderbookChanges struct {
+	Asks []CucoinEntry `json:"asks"`
+	Bids []CucoinEntry `json:"bids"`
 }
 
-func (c *CucoinProvider) cucoinHandleUpdate(symbol string, data *CucoinMessageData) error {
-	book := c.Orderbooks[symbol]
-
-	priceAsk, _ := strconv.ParseFloat(data.BestAsk, 64)
-	sizeAsk, _ := strconv.ParseFloat(data.BestAskSize, 64)
-	book.Asks.Update(priceAsk, sizeAsk)
-
-	priceBid, _ := strconv.ParseFloat(data.BestBid, 64)
-	sizeBid, _ := strconv.ParseFloat(data.BestBidSize, 64)
-	book.Bids.Update(priceBid, sizeBid)
-
-	log.Println(symbol, priceAsk, sizeAsk, priceBid, sizeBid)
-
-	return nil
-}
+type CucoinEntry [3]string

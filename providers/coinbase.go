@@ -1,8 +1,7 @@
 package providers
 
 import (
-	"encoding/json"
-	"fmt"
+	"log"
 	"strconv"
 
 	"github.com/gorilla/websocket"
@@ -34,6 +33,41 @@ func (c *CoinbaseProvider) Name() string {
 	return "Coinbase"
 }
 
+func (c *CoinbaseProvider) Start() error {
+	ws, _, err := websocket.DefaultDialer.Dial("wss://ws-feed.exchange.coinbase.com", nil)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	msg := CoinbaseMessage{
+		Type:       "subscribe",
+		ProductIds: c.symbols,
+		Channels:   []string{"level2_batch"}, // level2 требует auth через сайт и KYC для получения ключа
+	}
+	if err = ws.WriteJSON(msg); err != nil {
+		log.Fatal(err)
+	}
+
+	go func() {
+		for {
+			msg := CoinbaseSocketResponse{}
+			if err := ws.ReadJSON(&msg); err != nil {
+				log.Fatal(err)
+				break
+			}
+
+			if msg.Type == "l2update" {
+				c.handleUpdate(msg.ProductID, msg.Changes)
+			}
+			if msg.Type == "snapshot" {
+				c.handleSnapshot(msg.ProductID, msg.Asks, msg.Bids)
+			}
+		}
+	}()
+
+	return nil
+}
+
 func (c *CoinbaseProvider) handleUpdate(symbol string, changes []SnapshotChange) error {
 	for _, change := range changes {
 		side, price, size := parseSnapShotChange(change)
@@ -42,6 +76,7 @@ func (c *CoinbaseProvider) handleUpdate(symbol string, changes []SnapshotChange)
 		} else {
 			c.Orderbooks[symbol].Bids.Update(price, size)
 		}
+
 	}
 
 	return nil
@@ -56,42 +91,6 @@ func (c *CoinbaseProvider) handleSnapshot(symbol string, asks []SnapshotEntry, b
 		price, size := parseSnapShotEntry(entry)
 		c.Orderbooks[symbol].Bids.Update(price, size)
 	}
-	return nil
-}
-
-func (c *CoinbaseProvider) Start() error {
-	ws, _, err := websocket.DefaultDialer.Dial("wss://ws-feed.exchange.coinbase.com", nil)
-	if err != nil {
-		return err
-	}
-
-	ws.WriteJSON(CoinbaseMessage{
-		Type:       "subscribe",
-		ProductIds: c.symbols,
-		Channels:   []string{"level2_batch"}, // level2 требует auth через сайт и KYC для получения ключа
-	})
-
-	go func() {
-		for {
-			_, message, err := ws.ReadMessage()
-			if err != nil {
-				fmt.Println(err)
-				break
-			}
-			msg := Message{}
-			if err := json.Unmarshal(message, &msg); err != nil {
-				fmt.Println(err)
-				break
-			}
-			if msg.Type == "l2update" {
-				c.handleUpdate(msg.ProductID, msg.Changes)
-			}
-			if msg.Type == "snapshot" {
-				c.handleSnapshot(msg.ProductID, msg.Asks, msg.Bids)
-			}
-		}
-	}()
-
 	return nil
 }
 
@@ -114,7 +113,7 @@ type CoinbaseMessage struct {
 	Channels   []string `json:"channels"`
 }
 
-type Message struct {
+type CoinbaseSocketResponse struct {
 	Type       string   `json:"type"`
 	ProductID  string   `json:"product_id"`
 	ProductIds []string `json:"product_ids"`
