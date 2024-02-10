@@ -29,6 +29,7 @@ var pairs = map[string]map[string]string{
 		"Bybit":    "orderbook.1.XLMUSDT",
 		"Cucoin":   "/market/level2:XLM-USDT",
 		"OKX":      "XLM-USDT",
+		"MEXC":     "spot@public.increase.depth.v3.api@XLMUSDT",
 	},
 	"SOLUSD": {
 		"Binance":  "SOLUSDT",
@@ -37,6 +38,7 @@ var pairs = map[string]map[string]string{
 		"Bybit":    "orderbook.1.SOLUSDT",
 		"Cucoin":   "/market/level2:SOL-USDT",
 		"OKX":      "SOL-USDT",
+		"MEXC":     "spot@public.increase.depth.v3.api@SOLUSDT",
 	},
 	"WAXPUSD": {
 		"Binance": "WAXPUSDT",
@@ -45,6 +47,7 @@ var pairs = map[string]map[string]string{
 		"Bybit":  "orderbook.1.WAXPUSDT",
 		"Cucoin": "/market/level2:WAX-USDT",
 		"OKX":      "WAXP-USDT",
+		"MEXC":     "spot@public.increase.depth.v3.api@WAXPUSDT",
 	},
 	// "ADAUSD": {
 	// 	"Binance":  "ADAUSDT",
@@ -103,6 +106,7 @@ func main() {
 		providers.NewBybitProvider(mapSymbolsFor("Bybit")),
 		providers.NewCucoinProvider(mapSymbolsFor("Cucoin")),
 		providers.NewOKXProvider(mapSymbolsFor("OKX")),
+		providers.NewMEXCProvider(mapSymbolsFor("MEXC")),
 	}
 
 	for _, provider := range pvrs {
@@ -153,7 +157,7 @@ func calcCrossSpreads(datach chan map[string][]orderbook.CrossSpread, pvrs []ord
 				bestBidA = bookA.BestBid()
 				bestBidB = bookB.BestBid()
 			)
-			// fmt.Println(i, j, a.Name(), bestBidA, b.Name(), bestBidB)
+
 			if bestBidA == nil || bestBidB == nil {
 				if j < len(pvrs)-1 {
 					j++
@@ -163,6 +167,7 @@ func calcCrossSpreads(datach chan map[string][]orderbook.CrossSpread, pvrs []ord
 				}
 				continue
 			}
+			// fmt.Println(a.Name(), bestBidA.Price, b.Name(), bestBidB.Price)
 
 			//DEBUG
 			// fmt.Printf("%+v", len(pvrs))

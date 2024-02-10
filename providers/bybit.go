@@ -57,7 +57,7 @@ func (p *BybitProvider) Start() error {
 		for {
 			msg := BybitSocketResponse{}
 			if err := ws.ReadJSON(&msg); err != nil {
-				log.Fatal(err)
+				log.Fatal("Bybit readJSON err:", err)
 				break
 			}
 

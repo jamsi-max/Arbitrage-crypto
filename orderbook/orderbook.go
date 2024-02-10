@@ -144,6 +144,7 @@ func (l *Limits) Update(price float64, size float64) {
 		if size == 0.0 {
 			//DEBUG
 			// fmt.Println(price, limit.TotalVolume)
+
 			l.data.Delete(limit)
 			return
 		}
