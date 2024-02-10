@@ -8,19 +8,8 @@ import (
 
 	"github.com/gorilla/websocket"
 	"github.com/jamsi-max/arbitrage/orderbook"
+	sttg "github.com/jamsi-max/arbitrage/settings"
 )
-
-var symbols = map[string]bool{
-	// "BTCUSD": true,
-	"SOLUSD": true,
-	"XLMUSD": true,
-	"WAXPUSD": true,
-	// "ETHUSD",
-	// "DOGEUSD",
-	// "ADAUSD",
-	// "LTCUSD",
-	// "SOLUSD",
-}
 
 type WSConn struct {
 	*websocket.Conn
@@ -54,7 +43,7 @@ func NewServer(crossSpreadch chan map[string][]orderbook.CrossSpread) *Server {
 		crossSpreadch: crossSpreadch,
 		conns:         make(map[string]map[*WSConn]bool),
 	}
-	for symbol := range symbols {
+	for symbol := range sttg.ServerSymbols {
 		s.conns[symbol] = map[*WSConn]bool{}
 	}
 	return s
@@ -82,7 +71,7 @@ func (s *Server) registerConn(ws *WSConn) {
 	s.lock.Lock()
 	defer s.lock.Unlock()
 	for _, symbol := range ws.Symbols {
-		if _, ok := symbols[symbol]; ok {
+		if _, ok := sttg.ServerSymbols[symbol]; ok {
 			s.conns[symbol][ws] = true
 			fmt.Printf("registered connection to symbol %s %s\n", symbol, ws.RemoteAddr())
 		}
