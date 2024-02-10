@@ -142,6 +142,8 @@ func (l *Limits) Update(price float64, size float64) {
 
 	if limit, ok := l.data.Get(getFunc); ok {
 		if size == 0.0 {
+			//DEBUG
+			// fmt.Println(price, limit.TotalVolume)
 			l.data.Delete(limit)
 			return
 		}

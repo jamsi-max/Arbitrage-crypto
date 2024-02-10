@@ -23,25 +23,28 @@ var symbols = []string{
 
 var pairs = map[string]map[string]string{
 	"XLMUSD": {
-		"Binance":  "XLMUSDT",
+		"Binance": "XLMUSDT",
 		// "Kraken":   "XLM/USD",
 		"Coinbase": "XLM-USD",
 		"Bybit":    "orderbook.1.XLMUSDT",
 		"Cucoin":   "/market/level2:XLM-USDT",
+		"OKX":      "XLM-USDT",
 	},
 	"SOLUSD": {
-		"Binance": "SOLUSDT",
+		"Binance":  "SOLUSDT",
 		"Kraken":   "SOL/USD",
 		"Coinbase": "SOL-USD",
 		"Bybit":    "orderbook.1.SOLUSDT",
 		"Cucoin":   "/market/level2:SOL-USDT",
+		"OKX":      "SOL-USDT",
 	},
 	"WAXPUSD": {
 		"Binance": "WAXPUSDT",
 		// "Kraken":   "WAX/USD",
 		// "Coinbase": "WAXT-USD",
-		"Bybit":    "orderbook.1.WAXPUSDT",
-		"Cucoin":   "/market/level2:WAX-USDT",
+		"Bybit":  "orderbook.1.WAXPUSDT",
+		"Cucoin": "/market/level2:WAX-USDT",
+		"OKX":      "WAXP-USDT",
 	},
 	// "ADAUSD": {
 	// 	"Binance":  "ADAUSDT",
@@ -94,11 +97,12 @@ func mapSymbolsFor(provider string) []string {
 
 func main() {
 	pvrs := []orderbook.Provider{
-		providers.NewKrakenProvider(mapSymbolsFor("Kraken")),
+		// providers.NewKrakenProvider(mapSymbolsFor("Kraken")),
 		providers.NewCoinbaseProvider(mapSymbolsFor("Coinbase")),
 		providers.NewBinanceProvider(mapSymbolsFor("Binance")),
 		providers.NewBybitProvider(mapSymbolsFor("Bybit")),
 		providers.NewCucoinProvider(mapSymbolsFor("Cucoin")),
+		providers.NewOKXProvider(mapSymbolsFor("OKX")),
 	}
 
 	for _, provider := range pvrs {
@@ -129,12 +133,6 @@ func calcCrossSpreads(datach chan map[string][]orderbook.CrossSpread, pvrs []ord
 		for i, j := 0, 1; i < len(pvrs)-1; {
 			a := pvrs[i]
 			b := pvrs[j]
-			// var b orderbook.Provider
-			// if len(pvrs) < 2 {
-			// 	b = pvrs[0]
-			// } else {
-			// 	b = pvrs[j]
-			// }
 
 			// a := pvrs[i]
 			// var b orderbook.Provider
