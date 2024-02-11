@@ -28,6 +28,7 @@ func main() {
 		providers.NewCucoinProvider(mapSymbolsFor("Cucoin")),
 		providers.NewOKXProvider(mapSymbolsFor("OKX")),
 		providers.NewMEXCProvider(mapSymbolsFor("MEXC")),
+		providers.NewFinexPovider(mapSymbolsFor("Finex")),
 	}
 
 	for _, provider := range pvrs {
