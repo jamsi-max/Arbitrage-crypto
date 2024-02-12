@@ -20,15 +20,20 @@ func mapSymbolsFor(provider string) []string {
 }
 
 func main() {
+	// TODO Get list coins price all exchange
+	// coins.UpdateCoins()
+	// return
 	pvrs := []orderbook.Provider{
-		// providers.NewKrakenProvider(mapSymbolsFor("Kraken")),
-		providers.NewCoinbaseProvider(mapSymbolsFor("Coinbase")),
+		// providers.NewKrakenProvider(mapSymbolsFor("Kraken")), // не работает в России
+		// providers.NewCoinbaseProvider(mapSymbolsFor("Coinbase")), // не оаботает в России
+		// providers.NewFinexPovider(mapSymbolsFor("Finex")), // очень мало монет большие комиссии
+		//
 		providers.NewBinanceProvider(mapSymbolsFor("Binance")),
 		providers.NewBybitProvider(mapSymbolsFor("Bybit")),
 		providers.NewCucoinProvider(mapSymbolsFor("Cucoin")),
 		providers.NewOKXProvider(mapSymbolsFor("OKX")),
 		providers.NewMEXCProvider(mapSymbolsFor("MEXC")),
-		providers.NewFinexPovider(mapSymbolsFor("Finex")),
+		providers.NewGateioProvider(mapSymbolsFor("Gateio")),
 	}
 
 	for _, provider := range pvrs {

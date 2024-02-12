@@ -2,7 +2,7 @@ package settings
 
 var ServerSymbols = map[string]bool{
 	// "BTCUSD": true,
-	"SOLUSD": true,
+	"SOLUSD":  true,
 	"XLMUSD":  true,
 	"WAXPUSD": true,
 	// "ETHUSD",
@@ -25,34 +25,40 @@ var Symbols = []string{
 
 var Pairs = map[string]map[string]string{
 	"XLMUSD": {
-		"Binance": "XLMUSDT",
-		// "Kraken":   "XLM/USD", // не работает в России
-		"Coinbase": "XLM-USD",
-		"Bybit":    "orderbook.1.XLMUSDT",
-		"Cucoin":   "/market/level2:XLM-USDT",
-		"OKX":      "XLM-USDT",
-		"MEXC":     "spot@public.increase.depth.v3.api@XLMUSDT",
 		// "Finex":    "XLMUSDTPERP", // не поддерживается
+		// "Kraken":   "XLM/USD", // не работает в России
+		// "Coinbase": "XLM-USD", // не работает в России
+
+		"Binance": "XLMUSDT",
+		"Bybit":   "orderbook.1.XLMUSDT",
+		"Cucoin":  "/market/level2:XLM-USDT",
+		"OKX":     "XLM-USDT",
+		"MEXC":    "spot@public.increase.depth.v3.api@XLMUSDT",
+		"Gateio":  "XLM_USDT",
 	},
 	"SOLUSD": {
-		"Binance":  "SOLUSDT",
+		// "Finex":    "SOLUSDTPERP", // высокие комиссии
 		// "Kraken":   "SOL/USD", // не работает в России
-		"Coinbase": "SOL-USD",
-		"Bybit":    "orderbook.1.SOLUSDT",
-		"Cucoin":   "/market/level2:SOL-USDT",
-		"OKX":      "SOL-USDT",
-		"MEXC":     "spot@public.increase.depth.v3.api@SOLUSDT",
-		"Finex":    "SOLUSDTPERP",
+		// "Coinbase": "SOL-USD", // не работает в России
+
+		"Binance": "SOLUSDT",
+		"Bybit":   "orderbook.1.SOLUSDT",
+		"Cucoin":  "/market/level2:SOL-USDT",
+		"OKX":     "SOL-USDT",
+		"MEXC":    "spot@public.increase.depth.v3.api@SOLUSDT",
+		"Gateio":  "SOL_USDT",
 	},
 	"WAXPUSD": {
-		"Binance": "WAXPUSDT",
 		// "Kraken":   "WAX/USD", // не работает в России
 		// "Coinbase": "WAXT-USD", // не поддерживается
-		"Bybit":  "orderbook.1.WAXPUSDT",
-		"Cucoin": "/market/level2:WAX-USDT",
-		"OKX":    "WAXP-USDT",
-		"MEXC":   "spot@public.increase.depth.v3.api@WAXPUSDT",
 		// "Finex":  "WAXPUSDTPERP", // не поддерживается
+
+		"Binance": "WAXPUSDT",
+		"Bybit":   "orderbook.1.WAXPUSDT",
+		"Cucoin":  "/market/level2:WAX-USDT",
+		"OKX":     "WAXP-USDT",
+		"MEXC":    "spot@public.increase.depth.v3.api@WAXPUSDT",
+		"Gateio":  "WAXP_USDT",
 	},
 	// "ADAUSD": {
 	// 	"Binance":  "ADAUSDT",
