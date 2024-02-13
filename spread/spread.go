@@ -2,8 +2,8 @@ package spread
 
 import (
 	"github.com/jamsi-max/arbitrage/orderbook"
-	"github.com/jamsi-max/arbitrage/util"
 	sttg "github.com/jamsi-max/arbitrage/settings"
+	"github.com/jamsi-max/arbitrage/util"
 )
 
 func getSymbolForProvider(p string, symbol string) string {
@@ -86,7 +86,15 @@ func CalcCrossSpreads(datach chan map[string][]orderbook.CrossSpread, pvrs []ord
 				// }
 			}
 
-			crossSpread.Spread = util.Round(bestAsk.Price-bestBid.Price, 10_0000)
+			// ->10$
+			feeBidChain := sttg.Fee[symbol][bestBid.Provider]
+			crossSpread.Spread = util.Round((bestAsk.Price*((10/bestBid.Price)-feeBidChain))-10, 10_0000)
+
+			// ->100$
+			// feeBidChain := sttg.Fee[symbol][bestBid.Provider]
+			// crossSpread.Spread = util.Round((bestAsk.Price*((100/bestBid.Price)-feeBidChain))-100, 10_0000)
+
+			// crossSpread.Spread = util.Round(bestAsk.Price-bestBid.Price, 10_0000)
 			crossSpread.BestAsk = bestAsk
 			crossSpread.BestBid = bestBid
 			crossSpreads = append(crossSpreads, crossSpread)
