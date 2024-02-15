@@ -8,8 +8,8 @@ import (
 )
 
 type BybitMessage struct {
-	Op   string   `json:"op"`
-	Args []string `json:"args"`
+	Op    string   `json:"op"`
+	Args  []string `json:"args"`
 }
 
 type BybitProvider struct {
@@ -38,9 +38,9 @@ func (p *BybitProvider) GetOrderbooks() orderbook.Orderbooks {
 }
 
 func (p *BybitProvider) Start() error {
-	ws, _, err := websocket.DefaultDialer.Dial("wss://stream.bybit.com/v5/public/linear", nil)
+	ws, _, err := websocket.DefaultDialer.Dial("wss://stream.bybit.com/v5/public/spot", nil)
 	if err != nil {
-		log.Fatal(err)
+		log.Fatal("bybit dial err: ", err)
 	}
 
 	msg := BybitMessage{
@@ -57,9 +57,10 @@ func (p *BybitProvider) Start() error {
 		for {
 			msg := BybitSocketResponse{}
 			if err := ws.ReadJSON(&msg); err != nil {
-				log.Fatal("Bybit readJSON err:", err)
-				break
+				log.Println("bybit readJSON err:", err)
+				continue
 			}
+			// log.Println("->", msg)
 
 			if msg.Type == "delta" {
 				// log.Printf("%v %+v",msg.Topic, msg.Data)   //>>>debug

@@ -5,7 +5,6 @@ var ServerSymbols = map[string]bool{
 	"XLMUSD":  true,
 	"WAXPUSD": true,
 
-
 	// "BTCUSD": true,
 	// "SOLUSD":  true,
 	// "ETHUSD",
@@ -19,7 +18,6 @@ var Symbols = []string{
 	"ALGOUSD",
 	"XLMUSD",
 	"WAXPUSD",
-
 
 	// "BTCUSD",
 	// "ETHUSD",
@@ -41,6 +39,7 @@ var Pairs = map[string]map[string]string{
 		"OKX":     "XLM-USDT",
 		"MEXC":    "spot@public.increase.depth.v3.api@XLMUSDT",
 		"Gateio":  "XLM_USDT",
+		"HTX":     "market.xlmusdt.mbp.5",
 	},
 	"WAXPUSD": {
 		// "Kraken":   "WAX/USD", // не работает в России
@@ -53,6 +52,7 @@ var Pairs = map[string]map[string]string{
 		"OKX":     "WAXP-USDT",
 		"MEXC":    "spot@public.increase.depth.v3.api@WAXPUSDT",
 		"Gateio":  "WAXP_USDT",
+		"HTX":     "market.waxpusdt.mbp.5",
 	},
 	"ALGOUSD": {
 		// "Finex":    "SOLUSDTPERP", // высокие комиссии
@@ -65,8 +65,8 @@ var Pairs = map[string]map[string]string{
 		"OKX":     "ALGO-USDT",
 		"MEXC":    "spot@public.increase.depth.v3.api@ALGOUSDT",
 		"Gateio":  "ALGO_USDT",
+		"HTX":     "market.algousdt.mbp.5",
 	},
-
 
 	// "SOLUSD": {
 	// 	// "Finex":    "SOLUSDTPERP", // высокие комиссии
@@ -115,46 +115,4 @@ var Pairs = map[string]map[string]string{
 	// 	"Bybit":    "orderbook.1.LTCUSDT",
 	// 	"Cucoin":   "/market/ticker:LTC-USDT",
 	// },
-}
-
-var Fee = map[string]map[string]float64{
-	"XLMUSD": {
-		// "Finex":    "XLMUSDTPERP", // не поддерживается
-		// "Kraken":   "XLM/USD", // не работает в России
-		// "Coinbase": "XLM-USD", // не работает в России
-
-		"Bybit":   0.02,
-		"Binance": 0.02,
-		"OKX":     0.016,
-		"MEXC":    0.1,
-		"Cucoin":  3,
-		"Gateio":  4.25,
-		"HTX":     0.02,
-	},
-	"WAXPUSD": {
-		// "Kraken":   "WAX/USD", // не работает в России
-		// "Coinbase": "WAXT-USD", // не поддерживается
-		// "Finex":  "WAXPUSDTPERP", // не поддерживается
-
-		"Bybit":   2,
-		"Binance": 2,
-		"OKX":     0.1,
-		"MEXC":    2,
-		"Cucoin":  9.158,
-		"Gateio":  8.95,
-		"HTX":     1.5,
-	},
-	"ALGOUSD": {
-		// "Finex":    "SOLUSDTPERP", // высокие комиссии
-		// "Kraken":   "SOL/USD", // не работает в России
-		// "Coinbase": "SOL-USD", // не работает в России
-
-		"Bybit":   0.01,
-		"Binance": 0.008,
-		"OKX":     0.008,
-		"MEXC":    0.1,
-		"Cucoin":  0.1,
-		"Gateio":  2.94,
-		"HTX":     0.01,
-	},
 }

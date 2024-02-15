@@ -28,12 +28,14 @@ func main() {
 		// providers.NewCoinbaseProvider(mapSymbolsFor("Coinbase")), // не оаботает в России
 		// providers.NewFinexPovider(mapSymbolsFor("Finex")), // очень мало монет большие комиссии
 		//
+
 		providers.NewBinanceProvider(mapSymbolsFor("Binance")),
 		providers.NewBybitProvider(mapSymbolsFor("Bybit")),
 		providers.NewCucoinProvider(mapSymbolsFor("Cucoin")),
 		providers.NewOKXProvider(mapSymbolsFor("OKX")),
 		providers.NewMEXCProvider(mapSymbolsFor("MEXC")),
 		providers.NewGateioProvider(mapSymbolsFor("Gateio")),
+		providers.NewHTXProvider(mapSymbolsFor("HTX")), // only xlm // waxp and algo not sub // only
 	}
 
 	for _, provider := range pvrs {
